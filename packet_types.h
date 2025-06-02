@@ -1,0 +1,38 @@
+#ifndef PACKET_TYPES_HEADER
+#define PACKET_TYPES_HEADER
+
+#define TFTP_OPCODE_SIZE 2
+#define ACK_MESSAGE_SIZE 4
+#define DATA_HEADER_SIZE 4
+#define TFTP_MAX_MESSAGE_SIZE 516
+
+enum TFTP_PACKET_TYPE {
+    RRQ = 1,
+    WRQ = 2,
+    DATA = 3,
+    ACK = 4,
+    ERROR = 5,
+};
+
+enum TFTP_ERROR_CODE {
+    NOT_DEFINED = 0,
+    FILE_NOT_FOUND = 1,
+    ACCESS_VIOLATION = 2,
+    DISK_FULL_OR_ALLOCATION_EXCEEDED = 3,
+    ILLEGAL_TFTP_OPERATION = 4,
+    UNKNOWN_TRANSFER_ID = 5,
+    FILE_ALREADY_EXISTS = 6,
+    NO_SUCH_USER = 7,
+};
+
+static const char* TFTP_ERROR_CODE_STR[] = {
+    "Not defined",
+    "File not found",
+    "Access violation",
+    "Disk full or allocation exceeded",
+    "Unknown transfer id",
+    "File already exists",
+    "No such user",
+};
+
+#endif
