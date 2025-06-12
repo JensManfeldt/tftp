@@ -1,12 +1,11 @@
 #include "connection.h"
 #include <stddef.h>
-#include <linux/io_uring.h>
 
 struct server {
-   int socket_fd;
-   char* root_dir;
-   int max_connections;
-   struct connection* open_conns;
+    int socket_fd; // Socket file descriptor the server is running on
+    char* root_dir; // Root dir the server is serving from
+    int max_connections; // Max number of connections the server can handle
+    struct connection* open_conns; // list of open conns the server has
 };
 
 

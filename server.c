@@ -59,7 +59,7 @@ int init_server(struct server *server, char* address, int port, char* root_dir, 
     server->open_conns = p_connections;
 
     for(int i = 0; i < max_connections; i++) {
-        strncpy(server->open_conns[i].service, empty_service, strlen(empty_service));
+        memcpy(server->open_conns[i].service, EMPTY_SERVICE, strlen(EMPTY_SERVICE));
     }
     server->max_connections = max_connections;
 
@@ -149,7 +149,7 @@ void run_server(struct server *server) {
 
                 // TODO : if the send fail the connection should be marked for re-transmission
                 // except if an error occured when starting the connection...
-                int sendto_write_res = sendto(server->socket_fd, new_write_connection->message_buf, new_write_connection->current_message_size, MSG_CONFIRM, (struct sockaddr*)&client_addr, client_addr_len);
+                (void)sendto(server->socket_fd, new_write_connection->message_buf, new_write_connection->current_message_size, MSG_CONFIRM, (struct sockaddr*)&client_addr, client_addr_len);
 
                 if (init_wrq_res != 0) {
                     printf("(WRQ) Error with connection");
@@ -177,7 +177,7 @@ void run_server(struct server *server) {
                 }
 
                 printf("Sending ack\n");
-                int sendto_data_res = sendto(server->socket_fd, data_conn->message_buf, data_conn->current_message_size, MSG_CONFIRM, (struct sockaddr*)&client_addr, client_addr_len);
+                (void)sendto(server->socket_fd, data_conn->message_buf, data_conn->current_message_size, MSG_CONFIRM, (struct sockaddr*)&client_addr, client_addr_len);
 
                 break;
             case ACK:
@@ -197,7 +197,7 @@ void run_server(struct server *server) {
                     printf("Error during (RRQ) increment...");
                 }
 
-                int sendto_ack_res = sendto(server->socket_fd, (const void*)acked_connection->message_buf, acked_connection->current_message_size, MSG_CONFIRM, (struct sockaddr*)&client_addr, client_addr_len);
+                (void)sendto(server->socket_fd, (const void*)acked_connection->message_buf, acked_connection->current_message_size, MSG_CONFIRM, (struct sockaddr*)&client_addr, client_addr_len);
 
                 break;
             case ERROR:
@@ -231,8 +231,8 @@ void run_server(struct server *server) {
 struct connection* find_free_connection_slot(struct server* server) {
     printf("running find free conn\n");
     for(int i = 0; i < server->max_connections; i++) {
-        printf("service %s", server->open_conns[i].service);
-        if(strcmp(server->open_conns[i].service, empty_service) == 0) {
+        printf("service %s\n", server->open_conns[i].service);
+        if(strcmp(server->open_conns[i].service, EMPTY_SERVICE) == 0) {
             printf("Found empty slot for a new connection\n");
             return &server->open_conns[i];
         }
