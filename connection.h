@@ -5,7 +5,7 @@
 #include <netdb.h>
 #include <stdio.h>
 
-static const char* empty_service = "xxxxxxxx"; // Not the nicest but will do for now
+static const char EMPTY_SERVICE[32] = "xxxxxxxx"; // Not the nicest but will do for now
 
 // Connection struct
 // Holds the information about the current file transfer

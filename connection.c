@@ -85,7 +85,7 @@ int increment_rrq_connection(struct connection* conn) {
 int increment_wrq_connection(struct connection* conn, char* in_message_buf, size_t in_message_buf_size) {
 
     // TODO : This can error handle it
-    int write_res = fwrite(&in_message_buf[DATA_HEADER_SIZE], 1, in_message_buf_size - DATA_HEADER_SIZE , conn->connection_fd);
+    (void)fwrite(&in_message_buf[DATA_HEADER_SIZE], 1, in_message_buf_size - DATA_HEADER_SIZE , conn->connection_fd);
 
     fflush(conn->connection_fd); // This only needs to be here till termination of connection is implemented
 
@@ -104,9 +104,9 @@ int increment_wrq_connection(struct connection* conn, char* in_message_buf, size
 }
 
 void close_connection(struct connection *conn) {
-    int close_res = fclose(conn->connection_fd);
+    (void)fclose(conn->connection_fd);
     memset(conn->service, 0, sizeof(conn->service));
-    strncpy(conn->service, empty_service, strlen(empty_service)); // Make sure the empty service name is set
+    memcpy(conn->service, EMPTY_SERVICE, strlen(EMPTY_SERVICE)); // Make sure the empty service name is set
     conn->block_number = 0;
     conn->connection_type = 0;
     return;
