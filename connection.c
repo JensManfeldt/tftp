@@ -1,4 +1,6 @@
 #include <errno.h>
+#include <netinet/in.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include "connection.h"
@@ -50,7 +52,7 @@ int init_wrq_connection(struct connection* conn, char* service_buf, char* filena
     }
 
     strncpy(conn->service, service_buf, NI_MAXSERV);
-    conn->block_number = 0;
+    conn->block_number = 1;
     conn->connection_type = WRQ;
     conn->connection_fd = write_fptr;
     memset(conn->message_buf, 0, sizeof(conn->message_buf));
@@ -70,10 +72,9 @@ int increment_rrq_connection(struct connection* conn) {
     conn->block_number++;
     conn->message_buf[0] = 0;
     conn->message_buf[1] = DATA;
-    // TODO : Fix the setting of the next block so it also works when the
-    // block number takes more than 1 byte
-    conn->message_buf[2] = 0;
-    conn->message_buf[3] = (char)conn->block_number; // first block number is 1
+
+    uint16_t blk_num_in_network_order = htons(conn->block_number);
+    memcpy(&conn->message_buf[2], &blk_num_in_network_order, sizeof(conn->block_number));
 
     int bytes_read = fread(&conn->message_buf[DATA_HEADER_SIZE], 1, sizeof(conn->message_buf) - DATA_HEADER_SIZE, conn->connection_fd);
     conn->current_message_size = bytes_read + DATA_HEADER_SIZE; // The amount of bytes read from the file + 4 for the "header"
@@ -83,6 +84,15 @@ int increment_rrq_connection(struct connection* conn) {
 
 
 int increment_wrq_connection(struct connection* conn, char* in_message_buf, size_t in_message_buf_size) {
+    uint16_t in_msg_block_net;
+    memcpy(&in_msg_block_net, &in_message_buf[2], sizeof(in_msg_block_net));
+
+    if (conn->block_number != ntohs(in_msg_block_net)) {
+        // TODO : We should do something smarter here
+        // since we just need to wait for the the correct packet that we need to come
+        printf("Was waiting for block num %d but got %d", conn->block_number, ntohs(in_msg_block_net) );
+    }
+
 
     // TODO : This can error handle it
     (void)fwrite(&in_message_buf[DATA_HEADER_SIZE], 1, in_message_buf_size - DATA_HEADER_SIZE , conn->connection_fd);
@@ -92,10 +102,8 @@ int increment_wrq_connection(struct connection* conn, char* in_message_buf, size
     conn->message_buf[0] = 0;
     conn->message_buf[1] = ACK;
 
-    // TODO : This likey works just fells werid to use the message to ack the
-    // message itself. Fells like there could be some packet ording problems...
-    memcpy(&conn->message_buf[2], &in_message_buf[2], sizeof(char));
-    memcpy(&conn->message_buf[3], &in_message_buf[3], sizeof(char));
+    uint16_t blk_num_in_network_order= htons(conn->block_number);
+    memcpy(&conn->message_buf[2], &blk_num_in_network_order, sizeof(conn->block_number));
     conn->block_number++;
 
     conn->current_message_size = ACK_MESSAGE_SIZE;

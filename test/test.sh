@@ -21,3 +21,19 @@ unshare --net  bash -c 'ip link set lo up && $(pwd)"/test/two_download_conns.sh"
 if [ $? -eq 0 ]; then
     echo "Two download conns test passed"
 fi
+
+unshare --net  bash -c 'ip link set lo up && $(pwd)"/test/block_number_inc_download.sh"' &> /dev/null
+
+if [ $? -eq 0 ]; then
+    echo "block_number_inc_download passed"
+else
+    echo "block_number_inc_download failed"
+fi
+
+unshare --net  bash -c 'ip link set lo up && $(pwd)"/test/block_number_inc_upload.sh"' &> /dev/null
+
+if [ $? -eq 0 ]; then
+    echo "block_number_inc_upload passed"
+else
+    echo "block_number_inc_upload failed"
+fi

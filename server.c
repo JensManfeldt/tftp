@@ -94,7 +94,9 @@ void run_server(struct server *server) {
             continue;
         }
 
-        switch (in_message_buf[1]) {
+        uint16_t net_order_opcode;
+        memcpy(&net_order_opcode, in_message_buf, sizeof(net_order_opcode));
+        switch (ntohs(net_order_opcode)) {
             case RRQ:
                 printf("Got read (RRQ) request from host=%s service=%s\n", host_buf, service_buf);
 
