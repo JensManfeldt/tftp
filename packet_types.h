@@ -25,14 +25,5 @@ enum TFTP_ERROR_CODE {
     NO_SUCH_USER = 7,
 };
 
-static const char* TFTP_ERROR_CODE_STR[] = {
-    "Not defined",
-    "File not found",
-    "Access violation",
-    "Disk full or allocation exceeded",
-    "Unknown transfer id",
-    "File already exists",
-    "No such user",
-};
 
 #endif

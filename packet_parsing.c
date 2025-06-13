@@ -3,6 +3,16 @@
 #include <string.h>
 #include <stdio.h>
 
+static const char* TFTP_ERROR_CODE_STR[] = {
+    "Not defined",
+    "File not found",
+    "Access violation",
+    "Disk full or allocation exceeded",
+    "Unknown transfer id",
+    "File already exists",
+    "No such user",
+};
+
 // This function contains some copies that is likey not neccesary
 // pointer could just be set to the point to the correct positions in the message_buf
 void parse_rrq_or_wrq_packet(char* message_buf, size_t message_size, char* filename, size_t filename_size, char* mode, size_t mode_size) {
@@ -44,5 +54,6 @@ void create_error_packet(char* message_buf, size_t message_buf_size, enum TFTP_E
     message_buf[2] = 0;
     message_buf[3] = error_type;
     //TODO: Check the the message fits into the buffer
-    strncpy(&message_buf[4], TFTP_ERROR_CODE_STR[error_type], strlen(TFTP_ERROR_CODE_STR[error_type]));
+    (void)strncpy(&message_buf[4], TFTP_ERROR_CODE_STR[error_type], strlen(TFTP_ERROR_CODE_STR[error_type]));
+    return;
 }
