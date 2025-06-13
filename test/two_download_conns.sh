@@ -9,7 +9,7 @@ WORK_DIR=$(mktemp -d)
 trap 'rm -r "$WORK_DIR"' EXIT
 
 # start server
-./build/main -a "$ADDRESS" -p $PORT -d "$WORK_DIR" &
+./build/main -a "$ADDRESS" -p $PORT -d "$WORK_DIR" -c 2 &
 
 TEST_FILE_1="$FILENAME"_1
 head -c16K /dev/urandom | hexdump '-e"%x"' > "$WORK_DIR"/"$TEST_FILE_1"
