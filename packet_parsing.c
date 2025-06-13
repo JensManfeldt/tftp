@@ -1,4 +1,5 @@
 #include "packet_parsing.h"
+#include "packet_types.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -32,4 +33,16 @@ void parse_rrq_packet(char* message_buf, size_t message_size, char* filename, si
 void parse_wrq_packet(char* message_buf, size_t message_size, char* filename, size_t filename_size, char* mode, size_t mode_size){
     parse_rrq_or_wrq_packet(message_buf, message_size, filename, filename_size, mode, mode_size);
     return;
+}
+
+void create_error_packet(char* message_buf, size_t message_buf_size, enum TFTP_ERROR_CODE error_type) {
+
+    // TODO : Check size of the message buf (maybe...)
+    // TODO : use the the function that puts this into network order
+    message_buf[0] = 0;
+    message_buf[1] = ERROR;
+    message_buf[2] = 0;
+    message_buf[3] = error_type;
+    //TODO: Check the the message fits into the buffer
+    strncpy(&message_buf[4], TFTP_ERROR_CODE_STR[error_type], strlen(TFTP_ERROR_CODE_STR[error_type]));
 }

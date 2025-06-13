@@ -63,6 +63,8 @@ int init_server(struct server *server, char* address, int port, char* root_dir, 
     }
     server->max_connections = max_connections;
 
+    memset(server->error_msg_buf, 0, sizeof(server->error_msg_buf));
+
     return 0;
 }
 
@@ -166,10 +168,9 @@ void run_server(struct server *server) {
 
                 struct connection* data_conn = find_connection(server, service_buf);
                 if (!data_conn) {
-                    // Error here since a data packet came for a connection that
-                    // is not currently active
-                    // break for now
                     printf("Data packet came from an unkown service ignoring it...\n");
+                    // This still needs a test that it is correct
+                    create_error_packet(server->error_msg_buf, sizeof(server->error_msg_buf), UNKNOWN_TRANSFER_ID);
                     break;
                 }
 

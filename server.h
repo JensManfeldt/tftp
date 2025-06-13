@@ -6,6 +6,7 @@ struct server {
     char* root_dir; // Root dir the server is serving from
     int max_connections; // Max number of connections the server can handle
     struct connection* open_conns; // list of open conns the server has
+    char error_msg_buf[516]; // buffer to send error messages from
 };
 
 
