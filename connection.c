@@ -4,20 +4,30 @@
 #include <stdio.h>
 #include <string.h>
 #include "connection.h"
+#include "packet_parsing.h"
 #include "packet_types.h"
 
 int init_rrq_connection(struct connection *conn, char* service_buf, char* filename){
 
-    FILE* read_fptr = fopen(filename, "rb");
+    FILE* read_fptr = fopen(filename, "r");
 
     if (!read_fptr) {
-        // In here the creathe the error message in the message_buf
-        // and return -1 or something like that
+        conn->connection_type = ERROR;
         int err = errno;
-        printf("Could not open file (%s) : %s\n", filename, strerror(err));
-
-        // TODO : Fill in the correct error message
-        return -1;
+        switch (err) {
+           case  ENOENT:
+                printf("Requested file (%s) does not exists\n", filename);
+                create_error_packet(conn->message_buf, sizeof(conn->message_buf), FILE_NOT_FOUND);
+                return -1;
+            case EACCES:
+                printf("Requested file (%s) is not allowed to be accessed by server\n", filename);
+                create_error_packet(conn->message_buf, sizeof(conn->message_buf), ACCESS_VIOLATION);
+                return -1;
+            default:
+                printf("Got to default case when file (%s) got requested errno was : %s\n", filename, strerror(err));
+                create_error_packet(conn->message_buf, sizeof(conn->message_buf), NOT_DEFINED);
+                return -1;
+        }
     }
 
     strncpy(conn->service, service_buf, NI_MAXSERV);

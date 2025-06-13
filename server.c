@@ -115,10 +115,6 @@ void run_server(struct server *server) {
                 }
 
                 int init_rrq_res = init_rrq_connection(new_read_connection, service_buf, filename);
-                if (init_rrq_res != 0) {
-                    printf("(RRQ) Error with connection");
-                    // TODO : Clean up connection so slot if clear again
-                }
 
                 // The max message size is 516 but only send the amount of bytes we read from the file + 4 (for the "header")
                 int sendto_res = sendto(server->socket_fd, new_read_connection->message_buf, new_read_connection->current_message_size, MSG_CONFIRM, (struct sockaddr*)&client_addr, client_addr_len);
@@ -128,6 +124,12 @@ void run_server(struct server *server) {
                     printf("Failed to send : %s\n", strerror(err));
                 }
 
+                // Wait till here with check the connection if it got init correctly since we always need to send the packet
+                // bcause the init function will put the correct packet to response with into the message buffer always
+                if (init_rrq_res != 0) {
+                    printf("(RRQ) Error during setting up the connection error should have been send cleaning up connection now");
+                    close_connection(new_read_connection);
+                }
 
                 break;
             case WRQ:
