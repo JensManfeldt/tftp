@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include "connection.h"
 #include "packet_parsing.h"
 #include "packet_types.h"
@@ -54,16 +55,27 @@ int init_rrq_connection(struct connection *conn, char* service_buf, struct socka
 
 int init_wrq_connection(struct connection* conn, char* service_buf, struct sockaddr_in client_addr, socklen_t client_addr_len, char* filename) {
 
+    int file_exists = access(filename, F_OK);
+
+    if (file_exists == 0) {
+        printf("Requested file %s already exists", filename);
+        create_error_packet(conn->message_buf, sizeof(conn->message_buf),FILE_ALREADY_EXISTS);
+        return -1;
+    }
+
     FILE* write_fptr = fopen(filename, "wb");
     if(!write_fptr) {
-        // In here the
-        // create the error message in the message_buf
-        // and return -1 or something like that
         int err = errno;
-        printf("Could not open file (%s) : %s\n", filename, strerror(err));
-
-        // TODO : Fill in the correct error message
-        return -1;
+        switch (err) {
+            case EACCES:
+                printf("Requested file %s is not allowed to be written : %s", filename, strerror(err));
+                create_error_packet(conn->message_buf, sizeof(conn->message_buf), ACCESS_VIOLATION);
+                return -1;
+            default:
+                printf("Error during opening of file %s for writing", filename);
+                create_error_packet(conn->message_buf, sizeof(conn->message_buf), NOT_DEFINED);
+                return -1;
+        }
     }
 
     strncpy(conn->service, service_buf, NI_MAXSERV);
