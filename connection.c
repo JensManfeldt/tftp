@@ -145,9 +145,7 @@ int increment_wrq_connection(struct connection* conn, char* in_message_buf, size
 int set_next_retransmision_time(struct connection* conn) {
     int get_time_res = clock_gettime(CLOCK_MONOTONIC, &conn->re_transmit_time);
     if (get_time_res != 0) {
-        int err = errno;
-        printf("Failed to get MONOTONIC clock time : %s", strerror(err));
-
+        perror("Failed to get MONOTONIC clock time ");
         conn->re_transmit_time.tv_nsec = 0;
         conn->re_transmit_time.tv_sec = 0;
         return -1;

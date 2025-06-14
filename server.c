@@ -37,8 +37,7 @@ int init_server(struct server *server, char* address, int port, char* root_dir, 
 
     int bind_res = bind(server_socket_fd, (const struct sockaddr*) &server_addr, sizeof(server_addr));
     if (bind_res != 0) {
-        int err = errno;
-        printf("Failed to bind : %s", strerror(err));
+        perror("Server failed to bind ");
         return -1;
     }
 
@@ -93,9 +92,8 @@ void run_server(struct server *server) {
 
         int recv_res = recvfrom(server->socket_fd, in_message_buf, sizeof(in_message_buf), 0, (struct sockaddr*)&client_addr, &client_addr_len);
         if (recv_res == -1) {
-            int err = errno;
-            printf("Error in recvfrom : %s\n", strerror(err));
-            return;
+            perror("Error in recvfrom");
+            continue;
         }
 
         int get_name_res = getnameinfo((struct sockaddr*)&client_addr, client_addr_len, host_buf, sizeof(host_buf), service_buf, sizeof(service_buf), NI_NUMERICHOST | NI_NUMERICSERV);
@@ -120,7 +118,7 @@ void run_server(struct server *server) {
                     // Server can not handle anymore connection right now
                     // figure out something nice to do about it
                     // break for now
-                    printf("Server could not handle anymore connections!!");
+                    printf("Server could not handle anymore connections!!\n");
                     break;
                 }
 
@@ -136,8 +134,7 @@ void run_server(struct server *server) {
                 }
 
                 if (sendto_res == -1) {
-                    int err = errno;
-                    printf("Failed to send : %s\n", strerror(err));
+                    perror("Failed to send ");
                 }
 
                 // Wait till here with check the connection if it got init correctly since we always need to send the packet
@@ -220,7 +217,6 @@ void run_server(struct server *server) {
 
                 struct connection* acked_connection = find_connection(server, service_buf);
                 if (!acked_connection) {
-                    // Got an ack packet from an known connection
                     printf("Could not find connection for ack packet reviced ignoreing it...");
                     break;
                 }
