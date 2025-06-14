@@ -6,10 +6,10 @@ ADDRESS="127.0.0.1"
 PORT=8888
 FILENAME="test_file"
 WORK_DIR=$(mktemp -d)
-trap 'rm -r "$WORK_DIR"' EXIT
 
 # start server
 ./build/main -a "$ADDRESS" -p $PORT -d "$WORK_DIR" -c 2 &
+SERVER_PID=$!
 
 TEST_FILE_1="$FILENAME"_1
 head -c16K /dev/urandom | hexdump '-e"%x"' > "$WORK_DIR"/"$TEST_FILE_1"
@@ -34,7 +34,7 @@ echo "$DOWNLOADED_FILE_1_CHECKSUM"
 DOWNLOADED_FILE_2_CHECKSUM=$(sha256sum "$WORK_DIR"/test_download_2 | cut -d ' ' -f 1)
 echo "$DOWNLOADED_FILE_2_CHECKSUM"
 
-
+trap 'rm -r "$WORK_DIR" && kill -9 $SERVER_PID' EXIT
 
 if [[ "$TEST_FILE_1_CHECKSUM" == "$DOWNLOADED_FILE_1_CHECKSUM" && "$TEST_FILE_2_CHECKSUM" == "$DOWNLOADED_FILE_2_CHECKSUM" ]]; then
     exit 0

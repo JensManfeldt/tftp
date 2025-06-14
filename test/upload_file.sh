@@ -10,6 +10,7 @@ trap 'rm -r "$WORK_DIR"' EXIT
 
 # start server
 ./build/main -a "$ADDRESS" -p $PORT -d "$WORK_DIR" &>/dev/null &
+SERVER_PID=$!
 
 # Generate random file for upload
 head -c4096 /dev/urandom | hexdump '-e"%x"' > "$WORK_DIR"/"$FILENAME"_gen
@@ -20,6 +21,7 @@ curl -T "$WORK_DIR"/"$FILENAME"_gen tftp://"$ADDRESS":"$PORT"/"$FILENAME" &> /de
 
 UPLOADED_FILE_CHECKSUM=$(sha256sum "$WORK_DIR"/"$FILENAME" | cut -d ' ' -f 1)
 
+trap 'rm -r "$WORK_DIR" && kill -9 $SERVER_PID' EXIT
 
 if [[ "$TEST_FILE_CHECKSUM" == "$UPLOADED_FILE_CHECKSUM" ]]; then
     exit 0
