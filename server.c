@@ -207,27 +207,17 @@ void run_server(struct server *server) {
                 break;
             case ERROR:
                 printf("Got ERROR (ERROR) package from host=%s service=%s\n", host_buf, service_buf);
-                //enum TFTP_ERROR_CODE err;
-                //switch (message_buf[3]) {
-                //     case FILE_NOT_FOUND:
-                //        err = FILE_NOT_FOUND;
-                //     case ACCESS_VIOLATION:
-                //        err = DISK_FULL_OR_ALLOCATION_EXCEEDED;
-                //     case DISK_FULL_OR_ALLOCATION_EXCEEDED:
-                //        err = DISK_FULL_OR_ALLOCATION_EXCEEDED;
-                //     case ILLEGAL_TFTP_OPERATION:
-                //        err = ILLEGAL_TFTP_OPERATION;
-                //     case UNKNOWN_TRANSFER_ID:
-                //        err = UNKNOWN_TRANSFER_ID;
-                //     case FILE_ALREADY_EXISTS:
-                //        err = FILE_ALREADY_EXISTS;
-                //     case NO_SUCH_USER:
-                //        err = NO_SUCH_USER;
-                //     default:
-                //        err =  NOT_DEFINED;
-                //}
-                //printf("Error code was %s\n", TFTP_ERROR_CODE_STR[err]);
-                //printf("Provided message was %s\n", &in_message_buf[4]);
+
+                uint16_t error_code_network_order;
+                memcpy(&error_code_network_order, &in_message_buf[2], sizeof(error_code_network_order));
+                uint16_t error_code_host_order = ntohs(error_code_network_order);
+                printf("Error code is %d\n", error_code_host_order);
+
+                char print_err_buf[TFTP_MAX_MESSAGE_SIZE - ERROR_HEADER_SIZE];
+                memset(print_err_buf, 0, sizeof(print_err_buf));
+                memcpy(print_err_buf, &in_message_buf[4], TFTP_MAX_MESSAGE_SIZE - ERROR_HEADER_SIZE);
+                printf("Provided message was : %s\n", print_err_buf);
+
                 break;
        }
     }
