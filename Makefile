@@ -20,8 +20,13 @@ connection :
 packet_parsing :
 	$(compiler) -c packet_parsing.c -o build/packet_parsing.o
 
+run_client : build_client
+	./build/client -a 127.0.0.1 -p 8888 -f adasd
 
-test : build
+build_client :
+	$(compiler) clients/client_retransmission.c -o build/client
+
+test : build build_client
 	./test/test.sh
 
 clean:

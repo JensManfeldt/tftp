@@ -3,11 +3,12 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include "connection.h"
 #include "packet_parsing.h"
 #include "packet_types.h"
 
-int init_rrq_connection(struct connection *conn, char* service_buf, char* filename){
+int init_rrq_connection(struct connection *conn, char* service_buf, struct sockaddr_in client_addr, socklen_t client_addr_len, char* filename){
 
     FILE* read_fptr = fopen(filename, "r");
 
@@ -36,6 +37,10 @@ int init_rrq_connection(struct connection *conn, char* service_buf, char* filena
     conn->connection_fd = read_fptr;
     memset(conn->message_buf, 0, sizeof(conn->message_buf));
 
+
+    memcpy(&conn->client_addr, &client_addr, client_addr_len);
+    conn->client_addr_len = client_addr_len;
+
     conn->message_buf[0] = 0;
     conn->message_buf[1] = DATA;
     conn->message_buf[2] = 0;
@@ -47,7 +52,7 @@ int init_rrq_connection(struct connection *conn, char* service_buf, char* filena
     return 0;
 }
 
-int init_wrq_connection(struct connection* conn, char* service_buf, char* filename) {
+int init_wrq_connection(struct connection* conn, char* service_buf, struct sockaddr_in client_addr, socklen_t client_addr_len, char* filename) {
 
     FILE* write_fptr = fopen(filename, "wb");
     if(!write_fptr) {
@@ -66,6 +71,10 @@ int init_wrq_connection(struct connection* conn, char* service_buf, char* filena
     conn->connection_type = WRQ;
     conn->connection_fd = write_fptr;
     memset(conn->message_buf, 0, sizeof(conn->message_buf));
+
+
+    memcpy(&conn->client_addr, &client_addr, client_addr_len);
+    conn->client_addr_len = client_addr_len;
 
     conn->message_buf[0] = 0;
     conn->message_buf[1] = ACK;
@@ -118,6 +127,23 @@ int increment_wrq_connection(struct connection* conn, char* in_message_buf, size
 
     conn->current_message_size = ACK_MESSAGE_SIZE;
 
+    return 0;
+}
+
+int set_next_retransmision_time(struct connection* conn) {
+    int get_time_res = clock_gettime(CLOCK_MONOTONIC, &conn->re_transmit_time);
+    if (get_time_res != 0) {
+        int err = errno;
+        printf("Failed to get MONOTONIC clock time : %s", strerror(err));
+
+        conn->re_transmit_time.tv_nsec = 0;
+        conn->re_transmit_time.tv_sec = 0;
+        return -1;
+    }
+
+    conn->re_transmit_time.tv_sec += RETRANSMIT_TIMEOUT_IN_SEC;
+
+    printf("Moved forward the timer for restranmission");
     return 0;
 }
 

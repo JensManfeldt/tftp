@@ -65,6 +65,13 @@ int init_server(struct server *server, char* address, int port, char* root_dir, 
 
     memset(server->error_msg_buf, 0, sizeof(server->error_msg_buf));
 
+    // Set timeout for how long server will wait for recvfrom
+    // before checking other items
+    struct timeval wait_for_data;
+    wait_for_data.tv_sec = 1;
+    wait_for_data.tv_usec = 0;
+    setsockopt(server->socket_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&wait_for_data, sizeof(wait_for_data));
+
     return 0;
 }
 
@@ -76,12 +83,15 @@ void run_server(struct server *server) {
     char filename[256]; // max filename length on ext4 is 255 so leave space for 0 terminator
     char mode[256]; // buffer for storing mode from package in
 
+
     while(1) {
 
         struct sockaddr_in client_addr;
         socklen_t client_addr_len = sizeof(struct sockaddr);
 
-        int recv_res = recvfrom(server->socket_fd, in_message_buf, sizeof(in_message_buf), MSG_WAITALL, (struct sockaddr*)&client_addr, &client_addr_len);
+        retransmit_on_required_connections(server);
+
+        int recv_res = recvfrom(server->socket_fd, in_message_buf, sizeof(in_message_buf), 0, (struct sockaddr*)&client_addr, &client_addr_len);
         if (recv_res == -1) {
             int err = errno;
             printf("Error in recvfrom : %s\n", strerror(err));
@@ -102,7 +112,7 @@ void run_server(struct server *server) {
             case RRQ:
                 printf("Got read (RRQ) request from host=%s service=%s\n", host_buf, service_buf);
 
-                parse_rrq_packet(&in_message_buf[2], sizeof(in_message_buf) - TFTP_OPCODE_SIZE, filename, sizeof(filename), mode, sizeof(mode));
+                parse_rrq_packet(&in_message_buf[TFTP_OPCODE_SIZE], sizeof(in_message_buf) - TFTP_OPCODE_SIZE, filename, sizeof(filename), mode, sizeof(mode));
 
                 struct connection* new_read_connection = find_free_connection_slot(server);
 
@@ -114,10 +124,16 @@ void run_server(struct server *server) {
                     break;
                 }
 
-                int init_rrq_res = init_rrq_connection(new_read_connection, service_buf, filename);
+                int init_rrq_res = init_rrq_connection(new_read_connection, service_buf, client_addr, client_addr_len, filename);
 
                 // The max message size is 516 but only send the amount of bytes we read from the file + 4 (for the "header")
-                int sendto_res = sendto(server->socket_fd, new_read_connection->message_buf, new_read_connection->current_message_size, MSG_CONFIRM, (struct sockaddr*)&client_addr, client_addr_len);
+                int sendto_res = sendto(server->socket_fd, new_read_connection->message_buf, new_read_connection->current_message_size, MSG_CONFIRM, (struct sockaddr*)&new_read_connection->client_addr, new_read_connection->client_addr_len);
+
+                // The message just got send so the timestamp for next re-transmission should be moved forward
+                int set_retransmit_rrq = set_next_retransmision_time(new_read_connection);
+                if (set_retransmit_rrq != 0) {
+                    printf("Failed to set next retransmit time");
+                }
 
                 if (sendto_res == -1) {
                     int err = errno;
@@ -146,21 +162,27 @@ void run_server(struct server *server) {
                     break;
                 }
 
-                int init_wrq_res = init_wrq_connection(new_write_connection, service_buf, filename);
+                int init_wrq_res = init_wrq_connection(new_write_connection, service_buf, client_addr, client_addr_len, filename);
 
-                // Send what was put into the connection buffer
-                // no matter if it was successfull or it failed
-                // since the correct message should always be put into
-                // the conncetion buffer
+                int send_to_res = sendto(server->socket_fd, new_write_connection->message_buf, new_write_connection->current_message_size, MSG_CONFIRM, (struct sockaddr*)&new_write_connection->client_addr, new_write_connection->client_addr_len);
 
-                // TODO : if the send fail the connection should be marked for re-transmission
-                // except if an error occured when starting the connection...
-                (void)sendto(server->socket_fd, new_write_connection->message_buf, new_write_connection->current_message_size, MSG_CONFIRM, (struct sockaddr*)&client_addr, client_addr_len);
+                // TODO: The message just got send so the timestamp for next re-transmission should be moved forward
+                int set_retransmit_wrq = set_next_retransmision_time(new_write_connection);
+                if (set_retransmit_wrq != 0) {
+                    printf("Failed to set next retransmit time");
+                }
 
+                if (send_to_res != 0) {
+                    // TODO : if the send fail the connection it should be marked for re-transmission
+                    // If there is an error message in the message buffer we should also decide to do something
+                    // In here sendto will have set errno use the value to do something smart about what to do next
+                    printf("(WRQ) Sending messaged failed...");
+                }
+
+                // Wait till here with check the connection if it got init correctly since we always need to send the packet
+                //bcause the init function will put the correct packet to response with into the message buffer always
                 if (init_wrq_res != 0) {
-                    printf("(WRQ) Error with connection");
-                    // Something failed when creating the conn the error
-                    // message got send so clean/close the connection
+                    printf("(WRQ) Error during setting up the connection error should have been send cleaning up connection now");
                     close_connection(new_write_connection);
                 }
                 break;
@@ -184,6 +206,12 @@ void run_server(struct server *server) {
                 printf("Sending ack\n");
                 (void)sendto(server->socket_fd, data_conn->message_buf, data_conn->current_message_size, MSG_CONFIRM, (struct sockaddr*)&client_addr, client_addr_len);
 
+                // TODO : The message just got send so the timestamp for next re-transmission should be moved forward
+                int set_retransmit_data = set_next_retransmision_time(data_conn);
+                if (set_retransmit_data != 0) {
+                    printf("Failed to set next retransmit time");
+                }
+
                 break;
             case ACK:
                 printf("Got ack (ACK) package from host=%s service=%s\n", host_buf, service_buf);
@@ -203,6 +231,11 @@ void run_server(struct server *server) {
                 }
 
                 (void)sendto(server->socket_fd, (const void*)acked_connection->message_buf, acked_connection->current_message_size, MSG_CONFIRM, (struct sockaddr*)&client_addr, client_addr_len);
+                // TODO: The message just got send so the timestamp for next re-transmission should be moved forward
+                int set_retransmit_ack = set_next_retransmision_time(acked_connection);
+                if (set_retransmit_ack != 0) {
+                    printf("Failed to set next retransmit time");
+                }
 
                 break;
             case ERROR:
@@ -252,6 +285,28 @@ struct connection* find_connection(struct server* server, char* service) {
 
     printf("Could not find a current active connection matching that servic\n");
     return NULL;
+}
+
+void retransmit_on_required_connections(struct server* server) {
+    struct timespec current_time;
+    clock_gettime(CLOCK_MONOTONIC, &current_time);
+
+    for (int i = 0; i < server->max_connections; i++) {
+        struct connection conn = server->open_conns[i];
+
+        if (strcmp(conn.service, EMPTY_SERVICE) == 0){
+            // Not an open connection so continue
+            continue;
+        }
+
+        // TODO : Doing it like this will make it so the retransmission can be up to a
+        // second off from when it should have been but good enough for now
+        if (conn.re_transmit_time.tv_sec > current_time.tv_sec) {
+            continue;
+        }
+
+        (void)sendto(server->socket_fd, conn.message_buf, conn.current_message_size, MSG_CONFIRM, (struct sockaddr*)&conn.client_addr, conn.client_addr_len);
+    }
 }
 
 int destroy_server(struct server *server) {

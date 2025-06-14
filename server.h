@@ -23,3 +23,6 @@ struct connection* find_free_connection_slot(struct server* server);
 // find the connection that matches the service
 // return NULL if it does not exist
 struct connection* find_connection(struct server* server, char* service);
+
+// Check all server connections if their messages are required to be retransmitted
+void retransmit_on_required_connections(struct server* server);
