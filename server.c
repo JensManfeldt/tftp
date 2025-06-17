@@ -6,7 +6,6 @@
 #include "packet_parsing.h"
 #include "connection.h"
 #include <arpa/inet.h>
-#include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
